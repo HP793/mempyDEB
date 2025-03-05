@@ -64,6 +64,8 @@ spc = { # animal parameters
     # DEB parameters
     'cv' : 0.1, # individual variability in DEB parameters, given as coefficient of variation 
     'Idot_max_rel_mean': 5, # maximum specific ingestion rate; theoretical population average
+    'eta_IA_max_0': 1.0,
+    'eta_IA_min_0': 0,
     'eta_IA_0': 0.5, # assimilation efficiency
     'K_X': 0.5e3, # half-saturation constant for resource uptake
     'kappa': 0.9, # somatic allocation fraction
@@ -118,7 +120,8 @@ S_REL_INT = 0.01 # initial amount of structure, relative to X_emb_int
 INHERITED_ATTRIBUTES = [ 
     'cv',
     'Idot_max_rel_mean',
-    'eta_IA_0',
+    'eta_IA_max_0',
+    'eta_IA_min_0',
     'K_X',
     'kappa',
     'eta_AS_0',
@@ -161,6 +164,13 @@ class Animal(mesa.Agent):
         # the parameters have to be initialized first, and this is context-dependent
 
         self.ind_var_applied = False
+
+    # Funktion zur Berechnung der Assimilierungsrate
+    def berechne_assimilierungsrate(self):
+        #normalisierte_verfuegbarkeit = (verfuegbarkeit - nahrung_min) / (nahrung_max - nahrung_min)
+        # Assimiilierungsrate wird umgekehrt proportional zur Verfügbarkeit berechnet
+        assimilierungsrate = self.eta_IA_max - (self.eta_IA_max - self.eta_IA_min) * (self.f_X)
+        return assimilierungsrate
     
     def init_statevars(self, spc):
         """
@@ -185,7 +195,11 @@ class Animal(mesa.Agent):
         
         # attributes which can be modified by a stressor are initialized with the unstressed value
         self.eta_AR = self.eta_AR_0 # reproduction efficiency 
-        self.eta_IA = self.eta_IA_0 # assimilation efficiency
+        #self.eta_IA = self.eta_IA_0 # assimilation efficiency
+        #IA raus, min und max rein
+        self.eta_IA_max = self.eta_IA_max_0
+        self.eta_IA_min = self.eta_IA_min_0
+        #self.eta_IA = berechne_assimilierungsrate() #???
         self.eta_AS = self.eta_AS_0 # growth efficiency
         self.k_M = self.k_M_0 # maintenance costs
         self.Mdot_sum = 0. # cumulative somatic maintenance costs
@@ -314,6 +328,7 @@ class Animal(mesa.Agent):
 
         self.eta_AS = self.eta_AS_0 * self.y_G
         self.k_M = self.k_M_0 * self.y_M
+        self.eta_IA_0 = self.berechne_assimilierungsrate()
         self.eta_IA = self.eta_IA_0 * self.y_A
         self.eta_AR = self.eta_AR_0 * self.y_R
 
@@ -455,8 +470,8 @@ class Animal(mesa.Agent):
         self.determine_life_stage()
         self.TK() # toxicokinetics
         self.stress() # calculation of stress responses
-        self.apply_effects() # application of stress responses
         self.calc_Idot() # calculate ingestion rate
+        self.apply_effects() # application of stress responses
         self.calc_Adot() # calculate assimilation rate
         self.calc_Mdot() # calculate maintenance rate
         self.calc_Sdot() # calculate structural growth rate
