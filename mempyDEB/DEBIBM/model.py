@@ -199,6 +199,7 @@ class Animal(mesa.Agent):
         #IA raus, min und max rein
         self.eta_IA_max = self.eta_IA_max_0
         self.eta_IA_min = self.eta_IA_min_0
+        self.eta_IA_0 = None
         #self.eta_IA = berechne_assimilierungsrate() #???
         self.eta_AS = self.eta_AS_0 # growth efficiency
         self.k_M = self.k_M_0 # maintenance costs
@@ -555,7 +556,8 @@ class IBM(mesa.Model):
                 'cum_repro' : 'cum_repro', # cumulative reproductive output
                 'cohort' : 'cohort', # cohort (generation), starting to count at 0 for the parental cohort
                 'cause_of_death' : 'cause_of_death',
-                'mcov' : lambda a : a.kappa * a.Adot - a.Mdot # maintenance coverage (difference between energy available for maintenance and actual maintenance costs)
+                'mcov' : lambda a : a.kappa * a.Adot - a.Mdot, # maintenance coverage (difference between energy available for maintenance and actual maintenance costs)
+                'eta_IA_0' : 'eta_IA_0'
                 }
 
         # initialization of the animal population
@@ -578,7 +580,8 @@ class IBM(mesa.Model):
                 'M_tot' : get_M_tot,  # the total biomass
                 'aging_mortality' : 'aging_mortality',
                 'starvation_mortality' : 'starvation_mortality',
-                'toxicity_mortality' : 'toxicity_mortality'
+                'toxicity_mortality' : 'toxicity_mortality',
+                #'eta_IA_0' : 'eta_IA_0'
                 }, 
             agent_reporters = agent_reporterdict
         )
@@ -589,7 +592,11 @@ class IBM(mesa.Model):
         """
 
         Xdot_out = self.kX_out * self.X # the outflow rate depends on the current biomass (the inflow rate is constant)
-        self.X = np.maximum(0, self.X + (self.Xdot_in - Xdot_out) / self.tres)
+        if self.t_day < 10:
+            Xdot_in_dyn = self.Xdot_in * 2
+        else:
+            Xdot_in_dyn = self.Xdot_in
+        self.X = np.maximum(0, self.X + (Xdot_in_dyn - Xdot_out) / self.tres)
 
     def step(self):
         """
